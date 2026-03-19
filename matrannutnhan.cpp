@@ -1,131 +1,44 @@
 #include <Arduino.h>
 
-// --- PHẦN KHAI BÁO ---
-
-// 1. Chân GPIO cho 5 đèn LED. Nên dùng các chân an toàn 7,8,9,10,11
-const int ledTienPin = 17;
-const int ledLuiPin  = 18;
-const int ledTraiPin = 8;
-const int ledPhaiPin = 3;
-const int ledDungPin = 9;
-
-// 2. Chân GPIO cho ma trận nút 3x3. Chừa chân 0,3,1. Nên dùng 2,4,5 (Hàng) và 6,15,16 (Cột)
-// Chú ý: Cột 1 cắm chân 6, Cột 2 chân 15, Cột 3 chân 16
-const int rowPins[] = {4 ,5, 6};   // 3 chân Hàng (Outputs)
-const int colPins[] = {7, 15, 16};  // 3 chân Cột (Inputs với Pullup)
-
-const int NUM_ROWS = sizeof(rowPins) / sizeof(rowPins[0]);
-const int NUM_COLS = sizeof(colPins) / sizeof(colPins[0]);
-
-// Ánh xạ từ (Hàng, Cột) ra số nút tương ứng trên hình
-const int buttonMap[3][3] = {
-  {3, 2, 1}, // Hàng 1 (Nút 3, 2, 1)
-  {6, 5, 4}, // Hàng 2 (Nút 6, 5, 4)
-  {9, 8, 7}  // Hàng 3 (Nút 9, 8, 7)
-};
-
-// --- CÁC HÀM HỖ TRỢ ---
-
-// Hàm tắt tất cả 5 đèn LED
-void turnOffAllLeds() {
-  digitalWrite(ledTienPin, LOW);
-  digitalWrite(ledLuiPin,  LOW);
-  digitalWrite(ledTraiPin, LOW);
-  digitalWrite(ledPhaiPin, LOW);
-  digitalWrite(ledDungPin, LOW);
-}
-
-// Yêu cầu của đề bài: Viết HÀM để quét ma trận nút nhấn
-// Hàm trả về số nút được nhấn (1-9), hoặc trả về 0 nếu không nhấn
-int readButtonMatrix() {
-  for (int i = 0; i < NUM_ROWS; i++) {
-    // 1. Bật hàng hiện tại lên (cho xuống LOW)
-    digitalWrite(rowPins[i], LOW);
-
-    // 2. Kiểm tra xem các cột có ai bị kéo xuống LOW không
-    for (int j = 0; j < NUM_COLS; j++) {
-      if (digitalRead(colPins[j]) == LOW) {
-        // Nút tại (Hàng i, Cột j) đang được nhấn
-        int pressedButton = buttonMap[i][j];
-
-        // Đợi cho đến khi buông tay ra mới làm tiếp (chống dội nút nhấn)
-        while(digitalRead(colPins[j]) == LOW);
-        delay(50); // Nghỉ một chút trước khi quét tiếp
-        
-        // Trả hàng về lại HIGH trước khi thoát hàm
-        digitalWrite(rowPins[i], HIGH);
-        return pressedButton; // Trả về số nút
-      }
-    }
-
-    // 3. Tắt hàng hiện tại đi (cho lên lại HIGH) trước khi chuyển sang hàng tiếp theo
-    digitalWrite(rowPins[i], HIGH);
-  }
-  return 0; // Không nút nào được nhấn
-}
-
-// --- HÀM SETUP VÀ LOOP CHÍNH ---
+const int rowPins[] = {4, 5};         // 2 Hàng
+const int colPins[] = {7, 15, 16};    // 3 Cột
+const int ledPins[] = {17, 18, 8, 3, 9}; // 5 Đèn (Tiến, Lùi, Trái, Phải, Dừng)
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("--- Ma tran nut nhan 3x3 dieu khien 5 LED ---");
 
-  // Thiết lập 5 đèn LED là đầu ra
-  pinMode(ledTienPin, OUTPUT);
-  pinMode(ledLuiPin,  OUTPUT);
-  pinMode(ledTraiPin, OUTPUT);
-  pinMode(ledPhaiPin, OUTPUT);
-  pinMode(ledDungPin, OUTPUT);
-  turnOffAllLeds(); // Mặc định tắt hết
+  // 1. Cài đặt 5 đèn LED
+  for (int i = 0; i < 5; i++) pinMode(ledPins[i], OUTPUT);
 
-  // Thiết lập chân Hàng là OUTPUT, mặc định để HIGH
-  for (int i = 0; i < NUM_ROWS; i++) {
+  // 2. Cài đặt 2 Hàng là đầu ra (OUTPUT)
+  for (int i = 0; i < 2; i++) {
     pinMode(rowPins[i], OUTPUT);
-    digitalWrite(rowPins[i], HIGH);
+    digitalWrite(rowPins[i], HIGH); // Mặc định để mức CAO
   }
 
-  // Thiết lập chân Cột là INPUT_PULLUP
-  // Chú ý: Lệnh này rất quan trọng để nút không bị 'trôi nổi' (Floating).
-  for (int j = 0; j < NUM_COLS; j++) {
-    pinMode(colPins[j], INPUT_PULLUP);
-  }
+  // 3. Cài đặt 3 Cột là đầu vào (INPUT_PULLUP)
+  for (int i = 0; i < 3; i++) pinMode(colPins[i], INPUT_PULLUP);
 }
 
 void loop() {
-  int buttonPressed = readButtonMatrix(); // Quét lấy nút được nhấn
+  // QUY TRÌNH QUÉT:
+  for (int r = 0; r < 2; r++) {      // Chạy qua từng Hàng
+    digitalWrite(rowPins[r], LOW);   // "Hỏi" hàng này bằng cách cho nó xuống LOW
 
-  if (buttonPressed > 0) {
-    Serial.print("Da nhan nut so: ");
-    Serial.println(buttonPressed);
-    
-    // Yêu cầu đề bài: "VD: Ấn nút tiến đèn tiến sẽ sáng, ..."
-    // Chúng ta sẽ ánh xạ 5 nút đầu tiên (1-5) vào 5 đèn (Tiến-Dừng)
-    turnOffAllLeds(); // Tắt hết đèn cũ trước khi bật đèn mới
-    
-    switch (buttonPressed) {
-      case 1: // Nút 1 -> Đèn Tiến sáng
-        digitalWrite(ledTienPin, HIGH);
-        Serial.println("-> Bat den TIEN");
-        break;
-      case 2: // Nút 2 -> Đèn Lùi sáng
-        digitalWrite(ledLuiPin, HIGH);
-        Serial.println("-> Bat den LUI");
-        break;
-      case 3: // Nút 3 -> Đèn Trái sáng
-        digitalWrite(ledTraiPin, HIGH);
-        Serial.println("-> Bat den TRAI");
-        break;
-      case 4: // Nút 4 -> Đèn Phải sáng
-        digitalWrite(ledPhaiPin, HIGH);
-        Serial.println("-> Bat den PHAI");
-        break;
-      case 5: // Nút 5 -> Đèn Dừng sáng
-        digitalWrite(ledDungPin, HIGH);
-        Serial.println("-> Bat den DUNG");
-        break;
-      default:
-        Serial.println("-> Nut nay khong co chuc nang");
-        break;
+    for (int c = 0; c < 3; c++) {    // Trong hàng đó, kiểm tra từng Cột
+      if (digitalRead(colPins[c]) == LOW) { // Nếu thấy Cột bị kéo xuống LOW
+        
+        int buttonID = (r * 3) + c + 1; // Tính số thứ tự nút (1 đến 6)
+        Serial.print("Nút đã nhấn: "); Serial.println(buttonID);
+
+        // ĐIỀU KHIỂN LED:
+        for(int l=0; l<5; l++) digitalWrite(ledPins[l], LOW); // Tắt hết đèn cũ
+        if (buttonID <= 5) digitalWrite(ledPins[buttonID - 1], HIGH); // Bật đèn tương ứng
+
+        while(digitalRead(colPins[c]) == LOW); // Đợi buông tay
+        delay(50);
+      }
     }
+    digitalWrite(rowPins[r], HIGH); // Trả hàng về mức CAO để quét hàng sau
   }
 }
