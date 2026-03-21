@@ -9,7 +9,7 @@ void setup() {
   for (int i = 0; i < 5; i++) pinMode(led[i], OUTPUT);
   for (int i = 0; i < 2; i++) {
     pinMode(hang[i], OUTPUT);
-    digitalWrite(cot[i], HIGH); 
+    digitalWrite(hang[i], HIGH); 
   }
   for (int i = 0; i < 3; i++) pinMode(cot[i], INPUT_PULLUP);
 }
