@@ -1,0 +1,37 @@
+#include <WebServer.h>
+#include <WiFi.h>
+ const char* bale="402";
+  const char* messi="11112222";
+  int chan_den=17;
+  WebServer server(80);
+  
+  void bat_den_qua_web(){
+  digitalWrite(chan_den, HIGH);
+  server.send(200, "text/plain", "đèn đã được bật!");
+  Serial.println("Có người vừa bật đèn qua WiFi!");
+}
+void tat_den_qua_web(){
+  digitalWrite(chan_den, LOW);
+  server.send(200, "text/plain", "đèn đã được tắt!");
+  Serial.println("Có người vừa tắt đèn qua WiFi!");
+}
+void setup(){
+ 
+  Serial.begin(115200);
+  pinMode(chan_den, OUTPUT);
+  WiFi.begin(bale, messi);
+  while(WiFi.status()!=WL_CONNECTED){
+    Serial.print(".");
+    delay(500);
+  }
+  Serial.println(WiFi.localIP());
+  server.on("/bat", bat_den_qua_web); 
+  server.on("/tat", tat_den_qua_web);
+
+  // Bắt đầu chạy Server
+  server.begin();
+}
+
+void loop(){
+server.handleClient();
+}
